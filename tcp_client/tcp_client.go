@@ -11,16 +11,24 @@ import (
 // create tcp client
 const BUFFER_SIZE = 1024
 
+var isClosed = false
+
 var server net.Conn
+
+var wg sync.WaitGroup
+
+var msgToServer chan string
 
 var handleProcess func([]byte)
 
 func receivePacket(size int32) ([]byte, error) {
 	var received = make([]byte, size)
 	err := binary.Read(server, binary.LittleEndian, &received)
-	if err != nil {
+	if err != nil && !isClosed {
 		fmt.Println("Error decoding message:", err.Error())
 		return nil, err
+	} else if isClosed {
+		return nil, nil
 	}
 	return received, nil
 }
@@ -30,17 +38,25 @@ func receiveProcess() {
 		// receive message size of the next packet
 		var size int32
 		err := binary.Read(server, binary.LittleEndian, &size)
-		if err != nil {
+		if err != nil && !isClosed {
 			fmt.Println("Error decoding size:", err.Error())
-			os.Exit(1)
+			return
+		} else if isClosed {
+			return
+		}
+		if size < 0 {
+			println("server disconnected")
+			break
 		}
 		received, err := receivePacket(size)
 		if err != nil {
 			fmt.Println("Error receiving:", err.Error())
-			os.Exit(1)
+			return
 		}
 		handleProcess(received)
 	}
+	server.Close()
+	wg.Done()
 }
 
 func Send(msg string) {
@@ -50,9 +66,8 @@ func Send(msg string) {
 	binary.Write(server, binary.LittleEndian, []byte(msg))
 }
 
-func Client(port string, handle func([]byte)) *sync.WaitGroup {
+func Client(port string, handle func([]byte)) (*sync.WaitGroup, chan string) {
 	var err error
-	var wg sync.WaitGroup
 	handleProcess = handle
 	server, err = net.Dial("tcp", ":"+port)
 	if err != nil {
@@ -60,6 +75,24 @@ func Client(port string, handle func([]byte)) *sync.WaitGroup {
 		os.Exit(1)
 	}
 	wg.Add(1)
+	msgToServer = make(chan string)
 	go receiveProcess()
-	return &wg
+	go func() {
+		for {
+			msg := <-msgToServer
+			if isClosed {
+				break
+			}
+			Send(msg)
+		}
+	}()
+	return &wg, msgToServer
+}
+
+func Close() {
+	binary.Write(server, binary.LittleEndian, int32(-1))
+	isClosed = true
+	server.Close()
+	msgToServer <- ""
+	wg.Done()
 }
