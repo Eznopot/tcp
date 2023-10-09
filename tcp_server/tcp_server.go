@@ -69,6 +69,10 @@ func receiveProcess(client net.Conn) {
 	client.Close()
 }
 
+func GetAllClients() []net.Conn {
+	return clientList
+}
+
 func SendAll(msg string) {
 	for _, client := range clientList {
 		// send message size of the next packet
