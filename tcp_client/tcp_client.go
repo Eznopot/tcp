@@ -17,7 +17,7 @@ var server net.Conn
 
 var wg sync.WaitGroup
 
-var msgToServer chan string
+var msgToServer chan []byte
 
 var handleProcess func([]byte)
 
@@ -59,14 +59,14 @@ func receiveProcess() {
 	wg.Done()
 }
 
-func Send(msg string) {
+func Send(msg []byte) {
 	// send message size of the next packet
 	binary.Write(server, binary.LittleEndian, int32(len(msg)))
 	// send message
-	binary.Write(server, binary.LittleEndian, []byte(msg))
+	binary.Write(server, binary.LittleEndian, msg)
 }
 
-func Client(port string, handle func([]byte)) (*sync.WaitGroup, chan string) {
+func Client(port string, handle func([]byte)) (*sync.WaitGroup, chan []byte) {
 	var err error
 	handleProcess = handle
 	server, err = net.Dial("tcp", ":"+port)
@@ -75,7 +75,7 @@ func Client(port string, handle func([]byte)) (*sync.WaitGroup, chan string) {
 		os.Exit(1)
 	}
 	wg.Add(1)
-	msgToServer = make(chan string)
+	msgToServer = make(chan []byte)
 	go receiveProcess()
 	go func() {
 		for {
@@ -93,6 +93,6 @@ func Close() {
 	binary.Write(server, binary.LittleEndian, int32(-1))
 	isClosed = true
 	server.Close()
-	msgToServer <- ""
+	msgToServer <- []byte{}
 	wg.Done()
 }

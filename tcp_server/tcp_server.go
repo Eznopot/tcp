@@ -18,7 +18,7 @@ var handleProcess func(net.Conn, []byte)
 
 var server net.Listener
 
-var msgToAll chan string
+var msgToAll chan []byte
 
 var wg sync.WaitGroup
 
@@ -73,26 +73,26 @@ func GetAllClients() []net.Conn {
 	return clientList
 }
 
-func SendAll(msg string) {
+func SendAll(msg []byte) {
 	for _, client := range clientList {
 		// send message size of the next packet
 		binary.Write(client, binary.LittleEndian, int32(len(msg)))
 		// send message
-		binary.Write(client, binary.LittleEndian, []byte(msg))
+		binary.Write(client, binary.LittleEndian, msg)
 	}
 }
 
-func Send(client net.Conn, msg string) {
+func Send(client net.Conn, msg []byte) {
 	// send message size of the next packet
 	binary.Write(client, binary.LittleEndian, int32(len(msg)))
 	// send message
-	binary.Write(client, binary.LittleEndian, []byte(msg))
+	binary.Write(client, binary.LittleEndian, msg)
 }
 
-func Server(port string, handle func(net.Conn, []byte)) (*sync.WaitGroup, chan string) {
+func Server(port string, handle func(net.Conn, []byte)) (*sync.WaitGroup, chan []byte) {
 	// create tcp server
 	var err error
-	msgToAll = make(chan string)
+	msgToAll = make(chan []byte)
 	server, err = net.Listen("tcp", ":"+port)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
@@ -135,6 +135,6 @@ func Close() {
 		client.Close()
 	}
 	server.Close()
-	msgToAll <- ""
+	msgToAll <- []byte{}
 	wg.Done()
 }
