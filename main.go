@@ -14,27 +14,31 @@ import (
 
 func server(port string) {
 	fmt.Println("server")
-	var chanMsg chan []byte
+
 	var wg *sync.WaitGroup
+	var chanMsg chan []byte
+
+	//Create TCP Server
+	TCPServer := tcp_server.New(port, func(client net.Conn, msg []byte, TCPServer *tcp_server.TCPServer) {
+		fmt.Printf("Message from client: %s \n", string(msg))
+
+		chanMsg <- []byte("Hello to all from server with chan")         // send msg to all via channel
+		TCPServer.SendAll([]byte("Hello to all from server with func")) // send msg to all via function
+
+		//send msg to client
+		tcp_server.Send(client, []byte("Hello from server to you")) // send msg to client via function
+	})
 
 	// close server on ctrl C
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		tcp_server.Close()
+		TCPServer.Close()
 	}()
 
 	//start server
-	wg, chanMsg = tcp_server.Server(port, func(client net.Conn, msg []byte) {
-		fmt.Printf("Message from client: %s \n", string(msg))
-
-		chanMsg <- []byte("Hello to all from server with chan")          // send msg to all via channel
-		tcp_server.SendAll([]byte("Hello to all from server with func")) // send msg to all via function
-
-		//send msg to client
-		tcp_server.Send(client, []byte("Hello from server to you")) // send msg to client via function
-	})
+	wg, chanMsg = TCPServer.Open()
 
 	//wait for the process to finish
 	wg.Wait()
@@ -43,24 +47,33 @@ func server(port string) {
 func client(port string) {
 	fmt.Println("client")
 
-	//connect to server
+	//Create TCP Client
+	TCPClient := tcp_client.New(port, func(msg []byte, TCPClient *tcp_client.TCPClient) {
+		fmt.Printf("Message from server: %s \n", string(msg))
+	})
 
 	// close client on ctrl C
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		tcp_client.Close()
+		TCPClient.Close()
 	}()
 
-	wg, chanMsg := tcp_client.Client(port, func(msg []byte) {
-		fmt.Printf("Message from server: %s \n", string(msg))
-	})
+	//start client
+	wg, chanMsg := TCPClient.Connect()
 
 	//same thing
-	chanMsg <- []byte("Hello from client via chan")       // send msg via channel
-	tcp_client.Send([]byte("Hello from client via func")) // send msg via function
+	chanMsg <- []byte("Hello from client via chan")      // send msg via channel
+	TCPClient.Send([]byte("Hello from client via func")) // send msg via function
 
+	for {
+		msg := <-chanMsg
+		if string(msg) == "" {
+			break
+		}
+		fmt.Printf("Message from server: %s \n", string(msg))
+	}
 	//wait for the process to finish
 	wg.Wait()
 }
