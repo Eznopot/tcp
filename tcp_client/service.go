@@ -53,7 +53,6 @@ func (c *TCPClient) receiveProcess() {
 		} else if c.isClosed {
 			return
 		}
-		println("size:", size)
 		if size < 0 {
 			println("server disconnected")
 			break

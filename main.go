@@ -24,7 +24,6 @@ func server(port string) {
 
 		chanMsg <- []byte("Hello to all from server with chan")         // send msg to all via channel
 		TCPServer.SendAll([]byte("Hello to all from server with func")) // send msg to all via function
-
 		//send msg to client
 		tcp_server.Send(client, []byte("Hello from server to you")) // send msg to client via function
 	})
@@ -66,14 +65,6 @@ func client(port string) {
 	//same thing
 	chanMsg <- []byte("Hello from client via chan")      // send msg via channel
 	TCPClient.Send([]byte("Hello from client via func")) // send msg via function
-
-	for {
-		msg := <-chanMsg
-		if string(msg) == "" {
-			break
-		}
-		fmt.Printf("Message from server: %s \n", string(msg))
-	}
 	//wait for the process to finish
 	wg.Wait()
 }

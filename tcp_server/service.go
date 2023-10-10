@@ -127,7 +127,6 @@ func (s *TCPServer) Open() (*sync.WaitGroup, chan []byte) {
 	go func() {
 		for {
 			msg := <-s.channel
-			println("send to all", string(msg))
 			if s.isClosed {
 				break
 			}
