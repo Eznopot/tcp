@@ -11,7 +11,6 @@ import (
 func New(port string, handle func(net.Conn, []byte, *TCPServer), optional ...interface{}) *TCPServer {
 	var server TCPServer
 	server.isClosed = false
-	server.channel = make(chan []byte)
 	server.handleProcess = handle
 	server.port = port
 
@@ -99,7 +98,7 @@ func Send(client net.Conn, msg []byte) {
 	binary.Write(client, binary.LittleEndian, msg)
 }
 
-func (s *TCPServer) Open() (*sync.WaitGroup, chan []byte) {
+func (s *TCPServer) Open() *sync.WaitGroup {
 	// create tcp server
 	var err error
 	s.server, err = net.Listen("tcp", ":"+s.port)
@@ -124,16 +123,7 @@ func (s *TCPServer) Open() (*sync.WaitGroup, chan []byte) {
 		}
 	}()
 
-	go func() {
-		for {
-			msg := <-s.channel
-			if s.isClosed {
-				break
-			}
-			s.SendAll(msg)
-		}
-	}()
-	return &s.wg, s.channel
+	return &s.wg
 }
 
 func (s *TCPServer) Close() {
@@ -143,6 +133,5 @@ func (s *TCPServer) Close() {
 		client.Close()
 	}
 	s.server.Close()
-	s.channel <- []byte{}
 	s.wg.Done()
 }

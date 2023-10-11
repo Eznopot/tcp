@@ -11,7 +11,6 @@ import (
 func New(port string, handle func([]byte, *TCPClient), optional ...interface{}) *TCPClient {
 	var client TCPClient
 	client.isClosed = false
-	client.channel = make(chan []byte)
 	client.handleProcess = handle
 	client.port = port
 
@@ -80,7 +79,7 @@ func (c *TCPClient) Send(msg []byte) {
 	binary.Write(c.server, binary.LittleEndian, msg)
 }
 
-func (c *TCPClient) Connect() (*sync.WaitGroup, chan []byte) {
+func (c *TCPClient) Connect() *sync.WaitGroup {
 	var err error
 	c.server, err = net.Dial("tcp", ":"+c.port)
 	if err != nil {
@@ -89,22 +88,12 @@ func (c *TCPClient) Connect() (*sync.WaitGroup, chan []byte) {
 	}
 	c.wg.Add(1)
 	go c.receiveProcess()
-	go func() {
-		for {
-			msg := <-c.channel
-			if c.isClosed {
-				break
-			}
-			c.Send(msg)
-		}
-	}()
-	return &c.wg, c.channel
+	return &c.wg
 }
 
 func (c *TCPClient) Close() {
 	binary.Write(c.server, binary.LittleEndian, int32(-1))
 	c.isClosed = true
 	c.server.Close()
-	c.channel <- []byte{}
 	c.wg.Done()
 }

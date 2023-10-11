@@ -16,13 +16,11 @@ func server(port string) {
 	fmt.Println("server")
 
 	var wg *sync.WaitGroup
-	var chanMsg chan []byte
 
 	//Create TCP Server
 	TCPServer := tcp_server.New(port, func(client net.Conn, msg []byte, TCPServer *tcp_server.TCPServer) {
 		fmt.Printf("Message from client: %s \n", string(msg))
-
-		chanMsg <- []byte("Hello to all from server with chan")         // send msg to all via channel
+		// send msg to all via channel
 		TCPServer.SendAll([]byte("Hello to all from server with func")) // send msg to all via function
 		//send msg to client
 		tcp_server.Send(client, []byte("Hello from server to you")) // send msg to client via function
@@ -37,7 +35,7 @@ func server(port string) {
 	}()
 
 	//start server
-	wg, chanMsg = TCPServer.Open()
+	wg = TCPServer.Open()
 
 	//wait for the process to finish
 	wg.Wait()
@@ -60,10 +58,8 @@ func client(port string) {
 	}()
 
 	//start client
-	wg, chanMsg := TCPClient.Connect()
+	wg := TCPClient.Connect()
 
-	//same thing
-	chanMsg <- []byte("Hello from client via chan")      // send msg via channel
 	TCPClient.Send([]byte("Hello from client via func")) // send msg via function
 	//wait for the process to finish
 	wg.Wait()

@@ -9,7 +9,6 @@ type TCPServer struct {
 	buffer_size int32 `default:"1024"`
 	isClosed    bool  `default:"false"`
 	port        string
-	channel     chan []byte
 
 	wg         sync.WaitGroup
 	server     net.Listener
